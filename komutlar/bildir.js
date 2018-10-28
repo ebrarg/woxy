@@ -26,6 +26,15 @@ module.exports.run = async (bot, message, args) => {
 
 };
 
-module.exports.help = {
-    name: 'report'
+exports.conf = {
+  enabled: true, 
+  guildOnly: false, 
+  aliases: ['bildir'], 
+  permLevel: 0 
+};
+
+exports.help = {
+  name: 'bildir', 
+  description: 'Kullanıcı bildirir', 
+  usage: 'bildir' 
 };
