@@ -1,21 +1,131 @@
-const discord = require('discord.js');
-const ytdl = require('ytdl-core');
-const YouTube = require('simple-youtube-api');
-const ready = require('./handlers/ready');
-const message = require('./handlers/message');
-const config = require('./settiings/config.json');
-const youtube = new YouTube(ayarlar.api);
-const utils = require('./global/utils');
-const bot = new discord.Client();
+const Discord = require('discord.js');
+const client = new Discord.Client();
+const ayarlar = require('./ayarlar.json');
+const chalk = require('chalk');
+const fs = require('fs');
+const moment = require('moment');
+require('./util/eventLoader')(client);
 
-require('./global/functions')(bot, utils, ytdl, config);
+var prefix = ayarlar.prefix;
 
-bot.commands = new discord.Collection();
-bot.aliases = new discord.Collection();
-bot.youtube = new YouTube(YouTubeAPIKey); // YouTube Client
-bot.queue = new Map() // Music Queue
-bot.votes = new Map(); // Vote Skip
-ready.ready(bot);
-message.message(bot, utils, config, discord);
+const log = message => {
+  console.log(`[${moment().format('YYYY-MM-DD HH:mm:ss')}] ${message}`);
+};
+
+client.commands = new Discord.Collection();
+client.aliases = new Discord.Collection();
+fs.readdir('./komutlar/', (err, files) => {
+  if (err) console.error(err);
+  log(`${files.length} komut yuklenecek.`);
+  files.forEach(f => {
+    let props = require(`./komutlar/${f}`);
+    log(`Yuklenen komut: ${props.help.name}.`);
+    client.commands.set(props.help.name, props);
+    props.conf.aliases.forEach(alias => {
+      client.aliases.set(alias, props.help.name);
+    });
+  });
+});
+
+client.reload = command => {
+  return new Promise((resolve, reject) => {
+    try {
+      delete require.cache[require.resolve(`./komutlar/${command}`)];
+      let cmd = require(`./komutlar/${command}`);
+      client.commands.delete(command);
+      client.aliases.forEach((cmd, alias) => {
+        if (cmd === command) client.aliases.delete(alias);
+      });
+      client.commands.set(command, cmd);
+      cmd.conf.aliases.forEach(alias => {
+        client.aliases.set(alias, cmd.help.name);
+      });
+      resolve();
+    } catch (e){
+      reject(e);
+    }
+  });
+};
+
+client.load = command => {
+  return new Promise((resolve, reject) => {
+    try {
+      let cmd = require(`./komutlar/${command}`);
+      client.commands.set(command, cmd);
+      cmd.conf.aliases.forEach(alias => {
+        client.aliases.set(alias, cmd.help.name);
+      });
+      resolve();
+    } catch (e){
+      reject(e);
+    }
+  });
+};
+
+client.unload = command => {
+  return new Promise((resolve, reject) => {
+    try {
+      delete require.cache[require.resolve(`./komutlar/${command}`)];
+      let cmd = require(`./komutlar/${command}`);
+      client.commands.delete(command);
+      client.aliases.forEach((cmd, alias) => {
+        if (cmd === command) client.aliases.delete(alias);
+      });
+      resolve();
+    } catch (e){
+      reject(e);
+    }
+  });
+};
+
+client.on('message', msg => {
+  if (msg.content.toLowerCase() === 'sa') {
+		if (!msg.guild.member(msg.author).hasPermission("BAN_MEMBERS")) {
+			msg.author.sendMessage('Aleykum selam,  hos geldin ^^'); 
+		} else {
+		msg.reply('Aleykum selam, hos geldin ^^');
+		}
+	}
+});
+
+////////////////////////////
+
+client.on("guildMemberAdd", member => {
+	
+	var channel = member.guild.channels.find("name", "ğŸ’hosgeldiÌ‡niÌ‡z");
+	if (!channel) return;
+	
+	var role = member.guild.roles.find("name", "Sworder");
+	if(!role) return;
+	
+	member.addRole(role);
+	
+	channel.send(member + " Artik " + role + " rolu ile aramizda! ")
+	
+	member.send("Aramiza hosgeldin! Artik @sworder rolune sahipsin!")
+	
+});
+
+////////////////////////////
+
+client.elevation = message => {
+  if(!message.guild) {
+	return; }
+  let permlvl = 0;
+  if (message.member.hasPermission("BAN_MEMBERS")) permlvl = 2;
+  if (message.member.hasPermission("ADMINISTRATOR")) permlvl = 3;
+  if (message.author.id === ayarlar.sahip) permlvl = 4;
+  return permlvl;
+};
+
+var regToken = /[\w\d]{24}\.[\w\d]{6}\.[\w\d-_]{27}/g;
+
+client.on('warn', e => {
+  console.log(chalk.bgYellow(e.replace(regToken, 'that was redacted')));
+});
+
+client.on('error', e => {
+  console.log(chalk.bgRed(e.replace(regToken, 'that was redacted')));
+});
 
 client.login(ayarlar.token);
